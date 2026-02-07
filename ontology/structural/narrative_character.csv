@@ -1,0 +1,8 @@
+id,category,concept,description
+NA001,narrative,hero_journey,英雄の旅。日常から非日常への移行と帰還。
+NA002,narrative,crisis,決定的な危機的状況。
+NA003,narrative,climax,物語の最高潮。対立の解決。
+NA004,narrative,resolution,結末。新しい日常への回帰。
+CH001,character,hero,主人公。試練に立ち向かう者。
+CH002,character,villain,敵対者。主人公の障害となる存在。
+CH003,character,helper,援助者。主人公を助ける友人や賢者。

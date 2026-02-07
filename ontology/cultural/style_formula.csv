@@ -1,0 +1,5 @@
+id,category,concept,description
+SF001,story_formula,jidai_geki,日本の時代劇。武士、義理人情、勧善懲悪。
+SF002,story_formula,school_youth,現代の学園もの。青春、部活、恋愛、成長。
+LS001,linguistic_style,archaic,古風な言い回し。「〜でござる」「〜じゃ」。
+LS002,linguistic_style,modern_casual,現代の若者言葉。「〜じゃね？」「〜だし」。
