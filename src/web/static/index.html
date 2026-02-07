@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Story Renderer</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            max-width: 1400px; /* Wider layout for split panes */
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f7;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        
+        /* Layout Structure */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .section-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Input Section */
+        .input-section {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Controls Section */
+        .controls-bar {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* Results Split View */
+        .results-container {
+            display: flex;
+            gap: 20px;
+            min-height: 500px;
+        }
+        
+        .result-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0; /* Prevent flex item from overflowing */
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            font-family: inherit;
+            box-sizing: border-box;
+        }
+        
+        #inputText {
+            height: 200px;
+        }
+        
+        #outputText {
+            height: 100%;
+            min-height: 500px;
+            font-size: 1.05em;
+            line-height: 1.6;
+        }
+
+        /* Form Elements */
+        select, button, input[type="file"], input[type="text"] {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 10px 25px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .file-upload-label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        h2, h3 {
+            margin-top: 0;
+            color: #444;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        #status {
+            margin-left: auto;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .log-area {
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            padding: 10px;
+            height: 100px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8em;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+        
+        /* JSON Visualization Styles */
+        .json-container {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 13px;
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            overflow: auto;
+            height: 100%;
+            min-height: 500px;
+            box-sizing: border-box;
+        }
+        .json-key { color: #e06c75; }
+        .json-string { color: #98c379; }
+        .json-number { color: #d19a66; }
+        .json-boolean { color: #56b6c2; }
+        .json-null { color: #56b6c2; }
+        
+        details > summary {
+            cursor: pointer;
+            outline: none;
+            color: #61afef;
+            margin-bottom: 4px;
+        }
+        details[open] > summary {
+            color: #c678dd;
+        }
+        .indent {
+            margin-left: 20px;
+            border-left: 1px solid #3e4451;
+            padding-left: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Universal Story Renderer</h1>
+
+    <div class="main-container">
+        
+        <!-- 1. Input Section -->
+        <div class="input-section section-card">
+            <h2>原文入力 (Input Source)</h2>
+            <div style="margin-bottom: 15px;">
+                <label class="file-upload-label">ファイル読込:</label>
+                <input type="file" id="fileInput" accept=".txt,.md,.pdf">
+                <span style="font-size: 0.9em; color: #666; margin-left: 10px;">(.txt, .md, .pdf 対応)</span>
+            </div>
+            <textarea id="inputText" placeholder="メロスは激怒した。必ず、かの邪智暴虐の王を除かなければならぬと決意した。メロスには政治がわからぬ。メロスは、村の牧人である。笛を吹き、羊と遊んで暮して来た。けれども邪悪に対しては、人一倍に敏感であった。... (入力がない場合は、この「走れメロス」が自動的に適用されます)"></textarea>
+        </div>
+
+        <!-- 2. Controls Section -->
+        <div class="controls-bar">
+            <label style="font-weight: bold;">世界観 (Domain):</label>
+            <select id="domainSelect">
+                <option value="jidaigeki">時代劇</option>
+                <option value="school_drama">青春学園もの</option>
+                <option value="scifi">SF（サイバーパンク）</option>
+                <option value="fantasy">ハイファンタジー</option>
+            </select>
+            
+            <input type="text" id="customDomainInput" placeholder="カスタム世界観を入力... (こちらを優先)">
+            
+            <button id="renderBtn">Render (物語を生成)</button>
+            
+            <div id="status"></div>
+        </div>
+
+        <!-- 3. Results Section (Split View) -->
+        <div class="results-container">
+            <!-- Left Pane: Generated Story -->
+            <div class="result-pane section-card">
+                <h2>生成物語 (Story Output)</h2>
+                <textarea id="outputText" readonly placeholder="生成された物語がここに表示されます..."></textarea>
+            </div>
+
+            <!-- Right Pane: Structure Visualization -->
+            <div class="result-pane section-card">
+                <h2>構造解析 (Structure Visualization)</h2>
+                <div id="jsonViz" class="json-container">
+                    <div style="color: #666; text-align: center; margin-top: 50px;">
+                        解析結果がここに表示されます...<br>
+                        (Story Soul Structure)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="log-area" id="logArea">
+        <div>システムログ待機中...</div>
+    </div>
+
+    <script>
+        const inputText = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const fileInput = document.getElementById('fileInput');
+        const renderBtn = document.getElementById('renderBtn');
+        const domainSelect = document.getElementById('domainSelect');
+        const customDomainInput = document.getElementById('customDomainInput'); // New input
+        const statusDiv = document.getElementById('status');
+        const logArea = document.getElementById('logArea');
+        const jsonViz = document.getElementById('jsonViz');
+
+        // Simple JSON visualizer
+        function syntaxHighlight(json) {
+            if (typeof json !== 'string') {
+                json = JSON.stringify(json, undefined, 2);
+            }
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                var cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        // Interactive JSON Tree Builder
+        function createJsonTree(data) {
+            if (data === null) return createSpan('null', 'json-null');
+            if (typeof data === 'boolean') return createSpan(data, 'json-boolean');
+            if (typeof data === 'number') return createSpan(data, 'json-number');
+            if (typeof data === 'string') return createSpan(`"${data}"`, 'json-string');
+
+            if (Array.isArray(data)) {
+                if (data.length === 0) return document.createTextNode('[]');
+                
+                const details = document.createElement('details');
+                details.open = true;
+                const summary = document.createElement('summary');
+                summary.textContent = `Array [${data.length}]`;
+                details.appendChild(summary);
+                
+                const div = document.createElement('div');
+                div.className = 'indent';
+                data.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.appendChild(createJsonTree(item));
+                    div.appendChild(itemDiv);
+                });
+                details.appendChild(div);
+                return details;
+            }
+
+            if (typeof data === 'object') {
+                if (Object.keys(data).length === 0) return document.createTextNode('{}');
+
+                const details = document.createElement('details');
+                details.open = true;
+                const summary = document.createElement('summary');
+                // Try to find a good label for the object summary
+                let label = 'Object';
+                if (data.title) label = data.title;
+                else if (data.name) label = data.name;
+                else if (data.id) label = data.id;
+                else if (data.category && data.label) label = `${data.category}:${data.label}`;
+                
+                summary.textContent = label;
+                details.appendChild(summary);
+
+                const div = document.createElement('div');
+                div.className = 'indent';
+                
+                for (const key in data) {
+                    const line = document.createElement('div');
+                    const keySpan = document.createElement('span');
+                    keySpan.className = 'json-key';
+                    keySpan.textContent = `"${key}": `;
+                    line.appendChild(keySpan);
+                    line.appendChild(createJsonTree(data[key]));
+                    div.appendChild(line);
+                }
+                details.appendChild(div);
+                return details;
+            }
+            
+            return document.createTextNode(String(data));
+        }
+
+        function createSpan(text, className) {
+            const span = document.createElement('span');
+            span.className = className;
+            span.textContent = text;
+            return span;
+        }
+
+        function renderJsonViz(data) {
+            jsonViz.innerHTML = '';
+            jsonViz.appendChild(createJsonTree(data));
+        }
+
+        // Load preset on startup
+        async function loadPreset() {
+            try {
+                statusDiv.textContent = "プリセットを読み込み中...";
+                const response = await fetch('/api/preset');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.text) {
+                        inputText.value = data.text;
+                        statusDiv.textContent = "プリセット「走れメロス」を読み込みました。";
+                        log("Info: Preset loaded successfully.");
+                    } else {
+                        statusDiv.textContent = "プリセットなし";
+                    }
+                }
+            } catch (error) {
+                console.error('Preset load error:', error);
+                statusDiv.textContent = "プリセット読み込みエラー";
+                log("Error: Failed to load preset.");
+            }
+        }
+
+        // Handle file upload
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                statusDiv.textContent = "ファイルをアップロード・解析中...";
+                inputText.disabled = true;
+                fileInput.disabled = true;
+
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    inputText.value = data.text; // Overwrite current text
+                    statusDiv.textContent = `ファイル「${file.name}」を読み込みました。`;
+                    log(`Info: File ${file.name} uploaded and parsed.`);
+                } else {
+                    const err = await response.json();
+                    alert(`アップロードエラー: ${err.detail}`);
+                    statusDiv.textContent = "アップロード失敗";
+                    log(`Error: Upload failed - ${err.detail}`);
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('アップロード中にエラーが発生しました');
+                log(`Error: ${error.message}`);
+            } finally {
+                inputText.disabled = false;
+                fileInput.disabled = false;
+                fileInput.value = ''; // Reset file input
+            }
+        });
+
+        // Handle render
+        renderBtn.addEventListener('click', async () => {
+            let text = inputText.value;
+            
+            // Logic: Prefer custom input if available, else use select value
+            let domain = customDomainInput.value.trim();
+            if (!domain) {
+                domain = domainSelect.value;
+            }
+
+            // Fallback: Use preset if text is empty
+            if (!text.trim()) {
+                try {
+                    statusDiv.textContent = "プリセットを読み込み中...";
+                    const response = await fetch('/api/preset');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.text) {
+                            text = data.text;
+                            inputText.value = text; // Show the preset text
+                            log("Info: Used preset 'Run Melos' as input was empty.");
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to load preset fallback:", e);
+                }
+            }
+
+            if (!text.trim()) {
+                alert("原文を入力してください");
+                return;
+            }
+
+            try {
+                statusDiv.textContent = `生成中... (Domain: ${domain})`;
+                outputText.value = "生成中...";
+                renderBtn.disabled = true;
+                log(`Info: Starting render for domain '${domain}'...`);
+
+                const response = await fetch('/api/render', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text, domain })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    outputText.value = result.story;
+                    statusDiv.textContent = "生成完了！";
+
+                    if (result.soul_structure) {
+                        renderJsonViz(result.soul_structure);
+                        log("Info: Story Soul Structure visualized.");
+                    } else if (result.graph) {
+                        renderJsonViz(result.graph);
+                    }
+                    
+                    if (result.logs && result.logs.length > 0) {
+                        result.logs.forEach(l => log(`Server: ${l}`));
+                    }
+                    log("Info: Story rendering completed.");
+                } else {
+                    const err = await response.json();
+                    statusDiv.textContent = "生成エラー";
+                    outputText.value = `エラーが発生しました: ${err.detail || 'Unknown error'}`;
+                    log(`Error: Rendering failed - ${err.detail}`);
+                }
+            } catch (error) {
+                console.error('Render error:', error);
+                statusDiv.textContent = "通信エラー";
+                outputText.value = "サーバーとの通信に失敗しました。";
+                log(`Error: ${error.message}`);
+            } finally {
+                renderBtn.disabled = false;
+            }
+        });
+
+        function log(message) {
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logArea.appendChild(div);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // Initialize
+        loadPreset();
+
+    </script>
+</body>
+</html>
