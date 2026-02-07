@@ -363,6 +363,10 @@
                     } else {
                         statusDiv.textContent = "プリセットなし";
                     }
+                } else {
+                    console.error('Preset API Error:', response.status, response.statusText);
+                    statusDiv.textContent = "プリセット読み込み失敗";
+                    log(`Error: Failed to load preset (Status: ${response.status})`);
                 }
             } catch (error) {
                 console.error('Preset load error:', error);
